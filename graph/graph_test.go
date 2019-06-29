@@ -3,7 +3,7 @@ package graph_test
 import (
 	"testing"
 
-	"github.com/TomStuart92/concurrent-web-crawler/graph"
+	"github.com/TomStuart92/web-crawler/graph"
 )
 
 func TestNewGraph(t *testing.T) {
@@ -12,7 +12,6 @@ func TestNewGraph(t *testing.T) {
 		t.Error("Expected #NewGraph to return new graph")
 	}
 }
-
 
 func TestAddNodeThenHasNode(t *testing.T) {
 	label := "test"
@@ -88,7 +87,6 @@ func TestAddEdgeWithoutAddingAnyNode(t *testing.T) {
 	}
 }
 
-
 func TestBFSWithSimpleSetup(t *testing.T) {
 	var edges [][]string
 
@@ -96,7 +94,6 @@ func TestBFSWithSimpleSetup(t *testing.T) {
 		testPair := []string{from, to}
 		edges = append(edges, testPair)
 	}
-
 
 	label1 := "node1"
 	label2 := "node2"
@@ -107,22 +104,27 @@ func TestBFSWithSimpleSetup(t *testing.T) {
 
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	err = g.BFS(label1, f)
 
 	if err != nil {
 		t.Error(err)
+		return
 	}
 
 	if len(edges) != 1 {
 		t.Errorf("Expected 1 edge, got %d", len(edges))
+		return
 	}
-	if (edges[0][0] != label1) {
+	if edges[0][0] != label1 {
 		t.Errorf("Expected edge 1 from label to be %s, got %s", label1, edges[0][0])
+		return
 	}
-	if (edges[0][1] != label2) {
+	if edges[0][1] != label2 {
 		t.Errorf("Expected edge 1 to label to be %s, got %s", label2, edges[0][1])
+		return
 	}
 }
 
@@ -188,4 +190,3 @@ func TestBFSWithUnknownNode(t *testing.T) {
 		t.Error("Expected Node does not exist error, got nil")
 	}
 }
-

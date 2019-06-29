@@ -1,54 +1,46 @@
+// Package webcrawler exports a non-thread safe webcrawler.
 package webcrawler
 
 import (
+	"io"
 	"log"
 	"strings"
-	"time"
 
-	"github.com/TomStuart92/concurrent-web-crawler/graph"
+	"github.com/TomStuart92/web-crawler/graph"
 )
+
+// Page represents a single webpage to be scraped
+type Page struct {
+	URL   string
+	Body  io.Reader
+	Links []string
+}
 
 // WebCrawler is an implementation of a concurrent webcrawler.
 // It tracks seen pages in a graph data structure.
 type WebCrawler struct {
 	maxConcurrency int
-	timeout        time.Duration
-	pool           *Pool
 	graph          *graph.Graph
 	baseURL        string
-	running        bool
+	outstanding    int
 }
 
-func New(maxConcurrency int, timeout time.Duration) *WebCrawler {
-	pool := InitializePool(maxConcurrency)
-	pool.SetWorkFn(getPage)
-	pool.SetTransformFn(extractLinks)
-	return &WebCrawler{maxConcurrency, timeout, pool, graph.NewGraph(), "", false}
+// New returns a new webcrawler
+func New(maxConcurrency int) *WebCrawler {
+	return &WebCrawler{maxConcurrency, graph.NewGraph(), "", 0}
 }
 
 func isWithinBaseDomain(url string, baseURL string) bool {
 	return strings.HasPrefix(url, baseURL)
 }
 
-func parseReturnedLink(base string, link string) string {
-	var newLink string
-	if strings.HasPrefix(link, "/") {
-		newLink = base + link
-	} else {
-		newLink = link
-	}
-
-	if strings.HasSuffix(newLink, "/") {
-		newLink = newLink[0 : len(newLink)-1]
-	}
-	return newLink
-}
-
-func (w *WebCrawler) Scrape(baseURL string, singleDomain bool) *WebCrawler {
+// GenerateSiteMap handles concurrent generation of a sitemap based on  a given baseURL
+func (w *WebCrawler) GenerateSiteMap(baseURL string, singleDomain bool) *WebCrawler {
 	w.baseURL = baseURL
-	workQueue := make(chan string)
+	newLinksToScrape := make(chan Page)
 
-	resultChan, errChan := w.pool.Process(workQueue)
+	fetchChannel, errChan := FetchURLs(w.maxConcurrency, newLinksToScrape)
+	resultChan := extractLinks(fetchChannel)
 
 	go func() {
 		for err := range errChan {
@@ -56,46 +48,38 @@ func (w *WebCrawler) Scrape(baseURL string, singleDomain bool) *WebCrawler {
 		}
 	}()
 
-	workQueue <- baseURL
+	newLinksToScrape <- Page{baseURL, nil, nil}
 	w.graph.AddNode(baseURL)
-	w.running = true
+	w.outstanding = 1
 
-	for w.running {
-		select {
-		case result := <-resultChan:
-			for _, link := range result.Output {
-				newLink := parseReturnedLink(result.Input, link)
+	for w.outstanding != 0 && len(resultChan) == 0 {
+		log.Printf("Outstanding Requests To Be Scraped-> %d", w.outstanding-len(fetchChannel)-len(resultChan))
+		result := <-resultChan
+		w.outstanding--
+		for _, link := range result.Links {
+			newLink := parseReturnedLink(result.URL, link)
 
-				if singleDomain && !isWithinBaseDomain(newLink, baseURL) {
-					log.Printf("%s is outside base domain %s, discarding...", newLink, baseURL)
-					continue
-				}
-				if !w.graph.HasNode(newLink) {
-					log.Printf("%s is a new link, scraping... ", newLink)
-					w.graph.AddNode(newLink)
-					w.graph.AddEdge(result.Input, newLink)
-					go func() { workQueue <- newLink }()
-					continue
-				}
-				log.Printf("%s has been seen before, discarding... ", newLink)
+			if singleDomain && !isWithinBaseDomain(newLink, baseURL) {
+				log.Printf("%s is outside base domain %s, discarding...", newLink, baseURL)
+				continue
 			}
-		case <-time.After(w.timeout):
-			log.Printf("Timeout Reached")
-			if len(workQueue) == 0 {
-				log.Printf("No New Urls To Scrape, Terminating...")
-				w.Stop()
+			if !w.graph.HasNode(newLink) {
+				log.Printf("%s is a new link, scraping... ", newLink)
+				w.outstanding++
+				w.graph.AddNode(newLink)
+				w.graph.AddEdge(result.URL, newLink)
+				go func() { newLinksToScrape <- Page{newLink, nil, nil} }()
+				continue
 			}
+			log.Printf("%s has been seen before, discarding... ", newLink)
 		}
 	}
+	log.Printf("Scraping Complete, Returning...")
 	return w
 }
 
-func (w *WebCrawler) Stop() {
-	log.Printf("WebCrawler Terminating...")
-	w.pool.Stop()
-	w.running = false
-}
-
+// PrintSiteMap handles the printing of a site map after it has been discovered
 func (w *WebCrawler) PrintSiteMap() {
+	log.Print("Printing BFS graph...")
 	w.graph.Print(w.baseURL)
 }

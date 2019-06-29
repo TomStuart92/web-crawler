@@ -1,9 +1,8 @@
-// graph package provides an implementation of a directed graph, based upon simple string labels
+// Package graph provides an implementation of a directed graph, based upon simple string labels
 package graph
 
 import (
 	"fmt"
-	"log"
 )
 
 // Node is a single object in a directed graph
@@ -86,11 +85,10 @@ func (g *Graph) BFS(start string, f func(string, string)) error {
 }
 
 func printEdge(from string, to string) {
-	log.Printf("%s ---> %s", from, to)
+	fmt.Printf("\n%s ---> %s\n", from, to)
 }
 
 // Print is a helper wrapper around BFS, which logs a record for each edge discovered in the BFS
 func (g *Graph) Print(start string) error {
-	log.Print("Printing BFS graph...")
 	return g.BFS(start, printEdge)
 }
