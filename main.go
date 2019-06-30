@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/TomStuart92/web-crawler/webcrawler"
 )
@@ -13,5 +14,5 @@ func main() {
 	flag.Parse()
 	wc := webcrawler.New(*maxConcurrency)
 	wc.GenerateSiteMap(*url, *singleDomain)
-	wc.PrintSiteMap()
+	wc.PrintSiteMap(os.Stdout)
 }

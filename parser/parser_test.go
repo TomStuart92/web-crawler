@@ -7,33 +7,33 @@ import (
 	"github.com/TomStuart92/web-crawler/parser"
 )
 
-func TestExtractLinksEmptyReader(t *testing.T) {
+func TestExtractLinksFromHTMLEmptyReader(t *testing.T) {
 	reader := strings.NewReader("")
-	links := parser.ExtractLinks(reader)
+	links := parser.ExtractLinksFromHTML(reader)
 	if len(links) != 0 {
 		t.Errorf("Expected 0 links, got %d", len(links))
 	}
 }
 
-func TestExtractLinksInvalidHTML(t *testing.T) {
+func TestExtractLinksFromHTMLInvalidHTML(t *testing.T) {
 	reader := strings.NewReader("<html><body")
-	links := parser.ExtractLinks(reader)
+	links := parser.ExtractLinksFromHTML(reader)
 	if len(links) != 0 {
 		t.Errorf("Expected 0 links, got %d", len(links))
 	}
 }
 
-func TestExtractLinksLinkWithNoHREF(t *testing.T) {
+func TestExtractLinksFromHTMLLinkWithNoHREF(t *testing.T) {
 	reader := strings.NewReader("<html><a/></html>")
-	links := parser.ExtractLinks(reader)
+	links := parser.ExtractLinksFromHTML(reader)
 	if len(links) != 0 {
 		t.Errorf("Expected 0 links, got %d", len(links))
 	}
 }
 
-func TestExtractLinksLinkWithHREF(t *testing.T) {
+func TestExtractLinksFromHTMLLinkWithHREF(t *testing.T) {
 	reader := strings.NewReader(`<html><a href="http://test.com"></a></html>`)
-	links := parser.ExtractLinks(reader)
+	links := parser.ExtractLinksFromHTML(reader)
 	if len(links) != 1 {
 		t.Errorf("Expected 1 links, got %d", len(links))
 		return
@@ -43,9 +43,9 @@ func TestExtractLinksLinkWithHREF(t *testing.T) {
 	}
 }
 
-func TestExtractLinksLinkWithSelfClosingHREF(t *testing.T) {
+func TestExtractLinksFromHTMLLinkWithSelfClosingHREF(t *testing.T) {
 	reader := strings.NewReader(`<html><a href="http://test.com"/></html>`)
-	links := parser.ExtractLinks(reader)
+	links := parser.ExtractLinksFromHTML(reader)
 	if len(links) != 1 {
 		t.Errorf("Expected 1 links, got %d", len(links))
 		return
@@ -55,14 +55,53 @@ func TestExtractLinksLinkWithSelfClosingHREF(t *testing.T) {
 	}
 }
 
-func TestExtractLinksLinkWithNestedLink(t *testing.T) {
+func TestExtractLinksFromHTMLLinkWithNestedLink(t *testing.T) {
 	reader := strings.NewReader(`<html><body><h1><a href="http://test.com"></a></h1></body></html>`)
-	links := parser.ExtractLinks(reader)
+	links := parser.ExtractLinksFromHTML(reader)
 	if len(links) != 1 {
 		t.Errorf("Expected 1 links, got %d", len(links))
 		return
 	}
 	if links[0] != "http://test.com" {
 		t.Errorf("Expected http://test.com, got %s", links[0])
+	}
+}
+
+func TestNewAbsoluteURLNoTrailing(t *testing.T) {
+	base := "http://test.com"
+	link := "http://otherdomain.com"
+	parsed := parser.ParseReturnedLink(base, link)
+	if parsed != link {
+		t.Errorf("expected %s, got %s", link, parsed)
+	}
+}
+
+func TestNewAbsoluteURLTrailingSlash(t *testing.T) {
+	base := "http://test.com"
+	link := "http://otherdomain.com/"
+	expected := "http://otherdomain.com"
+	parsed := parser.ParseReturnedLink(base, link)
+	if parsed != expected {
+		t.Errorf("expected %s, got %s", expected, parsed)
+	}
+}
+
+func TestNewRelativeURLNoTrailingSlash(t *testing.T) {
+	base := "http://test.com"
+	link := "/otherpage"
+	expected := "http://test.com/otherpage"
+	parsed := parser.ParseReturnedLink(base, link)
+	if parsed != expected {
+		t.Errorf("expected %s, got %s", expected, parsed)
+	}
+}
+
+func TestNewRelativeURLTrailingSlash(t *testing.T) {
+	base := "http://test.com"
+	link := "/otherpage/"
+	expected := "http://test.com/otherpage"
+	parsed := parser.ParseReturnedLink(base, link)
+	if parsed != expected {
+		t.Errorf("expected %s, got %s", expected, parsed)
 	}
 }

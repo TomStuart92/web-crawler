@@ -4,14 +4,15 @@ package parser
 
 import (
 	"io"
+	"strings"
 
 	"golang.org/x/net/html"
 )
 
-// ExtractLinks takes a io.Reader containing a html string
+// ExtractLinksFromHTML takes a io.Reader containing a html string
 // and iterates through it to find all <a elements>, returning
 // an array of all the href attributes from the links.
-func ExtractLinks(body io.Reader) []string {
+func ExtractLinksFromHTML(body io.Reader) []string {
 	foundLinks := make([]string, 0)
 
 	z := html.NewTokenizer(body)
@@ -39,4 +40,20 @@ func ExtractLinks(body io.Reader) []string {
 			}
 		}
 	}
+}
+
+// ParseReturnedLink checks if a returned link is a relative path,
+// and returns the absolute link if so without any trailing slashes.
+func ParseReturnedLink(base string, link string) string {
+	var newLink string
+	if strings.HasPrefix(link, "/") {
+		newLink = base + link
+	} else {
+		newLink = link
+	}
+
+	if strings.HasSuffix(newLink, "/") {
+		newLink = newLink[0 : len(newLink)-1]
+	}
+	return newLink
 }

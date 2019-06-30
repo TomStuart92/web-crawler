@@ -3,6 +3,7 @@ package graph
 
 import (
 	"fmt"
+	"io"
 )
 
 // Node is a single object in a directed graph
@@ -84,11 +85,10 @@ func (g *Graph) BFS(start string, f func(string, string)) error {
 	}
 }
 
-func printEdge(from string, to string) {
-	fmt.Printf("\n%s ---> %s\n", from, to)
-}
-
 // Print is a helper wrapper around BFS, which logs a record for each edge discovered in the BFS
-func (g *Graph) Print(start string) error {
-	return g.BFS(start, printEdge)
+func (g *Graph) Print(output io.Writer, start string) error {
+	f := func(from string, to string) {
+		fmt.Fprintf(output, "\n%s ---> %s\n", from, to)
+	}
+	return g.BFS(start, f)
 }

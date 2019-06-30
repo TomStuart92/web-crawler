@@ -1,26 +1,11 @@
+// Package webcrawler exports a non-thread safe webcrawler.
 package webcrawler
 
-import (
-	"strings"
+import "github.com/TomStuart92/web-crawler/parser"
 
-	"github.com/TomStuart92/web-crawler/parser"
-)
-
-func parseReturnedLink(base string, link string) string {
-	var newLink string
-	if strings.HasPrefix(link, "/") {
-		newLink = base + link
-	} else {
-		newLink = link
-	}
-
-	if strings.HasSuffix(newLink, "/") {
-		newLink = newLink[0 : len(newLink)-1]
-	}
-	return newLink
-}
-
-func extractLinks(in chan Page) chan Page {
+// ExtractLinks reads pages from a channel and spins out new go routines
+// to handle the tokenisation and extraction of <a /> links from the html
+func ExtractLinks(in chan Page) chan Page {
 	resultsChan := make(chan Page)
 	go func() {
 		for page := range in {
@@ -28,7 +13,7 @@ func extractLinks(in chan Page) chan Page {
 				if p.Body == nil {
 					return
 				}
-				p.Links = parser.ExtractLinks(p.Body)
+				p.Links = parser.ExtractLinksFromHTML(p.Body)
 				resultsChan <- p
 			}(page)
 		}
